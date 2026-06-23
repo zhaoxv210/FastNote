@@ -16,6 +16,7 @@ interface VaultStore {
 
   // Actions
   setVaultPath: (path: string) => void;
+  switchVault: (path: string) => void;
   loadTree: () => Promise<void>;
   openFile: (filePath: string) => Promise<void>;
   saveFile: () => Promise<void>;
@@ -42,6 +43,32 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
 
   setVaultPath: (path: string) => {
     set({ vaultPath: path });
+    localStorage.setItem("fastnote-vault-path", path);
+  },
+
+  switchVault: (path: string) => {
+    const { isDirty, activeFile, activeContent, savedContent } = get();
+    
+    // Auto-save current file if dirty
+    if (isDirty && activeFile && activeContent !== savedContent) {
+      invoke("save_file", {
+        vaultPath: get().vaultPath,
+        filePath: activeFile,
+        content: activeContent,
+      }).catch((err) => console.error("Auto-save failed:", err));
+    }
+    
+    // Clear state and set new vault
+    set({
+      vaultPath: path,
+      tree: [],
+      activeFile: null,
+      activeContent: "",
+      isDirty: false,
+      savedContent: "",
+      searchResults: [],
+      isSearchOpen: false,
+    });
     localStorage.setItem("fastnote-vault-path", path);
   },
 

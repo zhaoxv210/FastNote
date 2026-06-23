@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Search } from "lucide-react";
 import { useVaultStore } from "@/stores/vaultStore";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open } from "@tauri-apps/plugin-dialog";
 
 const appWindow = getCurrentWindow();
 
@@ -9,6 +10,8 @@ export function Toolbar() {
   const vaultPath = useVaultStore((s) => s.vaultPath);
   const activeFile = useVaultStore((s) => s.activeFile);
   const search = useVaultStore((s) => s.search);
+  const switchVault = useVaultStore((s) => s.switchVault);
+  const loadTree = useVaultStore((s) => s.loadTree);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -34,6 +37,22 @@ export function Toolbar() {
     else useVaultStore.getState().clearSearch();
   };
 
+  const handleSwitchVault = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "切换笔记库",
+      });
+      if (selected && typeof selected === "string") {
+        switchVault(selected);
+        loadTree();
+      }
+    } catch (err) {
+      console.error("切换笔记库失败:", err);
+    }
+  };
+
   // Drag via Tauri API (like floral-notepaper)
   const handleTitleBarMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("button, input")) return;
@@ -53,23 +72,21 @@ export function Toolbar() {
       className="relative z-10 flex items-center justify-between h-11 px-5 bg-paper/55 backdrop-blur-[1px] border-b border-paper-deep/30 shrink-0 select-none cursor-default"
       onMouseDown={handleTitleBarMouseDown}
     >
-      {/* Brand + breadcrumb */}
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span className="text-[15px] font-serif font-medium text-ink-soft tracking-wide leading-none">
-          速记
-        </span>
-        <span className="text-[11px] text-ink-ghost font-body leading-none translate-y-px">
-          /
-        </span>
-        <span className="text-[11px] text-ink-faint font-body truncate max-w-[200px] leading-none">
+      {/* Vault switcher */}
+      <div className="flex items-center min-w-0 flex-1">
+        <button
+          onClick={handleSwitchVault}
+          className="text-[13px] font-body text-ink-soft truncate max-w-[180px] hover:text-bamboo transition-colors cursor-pointer"
+          title="点击切换笔记库"
+        >
           {vaultName}
-        </span>
+        </button>
         {fileName && (
           <>
-            <span className="text-[11px] text-ink-ghost font-body leading-none translate-y-px">
+            <span className="text-[11px] text-ink-ghost font-body mx-1.5">
               /
             </span>
-            <span className="text-[12px] text-ink-soft font-body truncate max-w-[160px] leading-none">
+            <span className="text-[12px] text-ink-faint font-body truncate max-w-[140px]">
               {fileName}
             </span>
           </>
