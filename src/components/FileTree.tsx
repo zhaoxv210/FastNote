@@ -272,6 +272,7 @@ export function FileTree() {
   const createFolder = useVaultStore((s) => s.createFolder);
   const [isCreating, setIsCreating] = useState<"file" | "folder" | null>(null);
   const [newName, setNewName] = useState("");
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   const handleCreateRoot = async () => {
     if (!newName.trim()) { setIsCreating(null); return; }
@@ -288,6 +289,12 @@ export function FileTree() {
     return acc + (n.children?.length ?? 0);
   }, 0);
 
+  const startCreate = (type: "file" | "folder") => {
+    setIsCreating(type);
+    setNewName("");
+    setAddMenuOpen(false);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -295,17 +302,38 @@ export function FileTree() {
         <span className="text-[11px] font-medium text-ink-faint font-body uppercase tracking-wider">
           笔记
         </span>
-        <div className="flex items-center gap-0.5">
+        <div className="relative">
           <button
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-ghost hover:text-ink-faint hover:bg-paper-warm transition-all cursor-pointer"
-            title="新建笔记"
-            onClick={() => {
-              setIsCreating(isCreating === "file" ? null : "file");
-              setNewName("");
-            }}
+            className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all cursor-pointer ${
+              isCreating || addMenuOpen
+                ? "text-bamboo bg-bamboo-mist/50"
+                : "text-ink-ghost hover:text-ink-faint hover:bg-paper-warm"
+            }`}
+            onClick={() => setAddMenuOpen(!addMenuOpen)}
           >
-            <Plus size={15} />
+            <Plus size={14} />
           </button>
+          {addMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setAddMenuOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-40 w-36 py-1 bg-cloud/95 backdrop-blur-sm border border-paper-deep/50 rounded-lg shadow-[0_4px_16px_var(--shadow-deep)] animate-scale-in">
+                <button
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-ink-soft hover:bg-bamboo-mist/60 hover:text-bamboo transition-colors font-body"
+                  onClick={() => startCreate("file")}
+                >
+                  <FileText size={13} />
+                  新建笔记
+                </button>
+                <button
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-ink-soft hover:bg-bamboo-mist/60 hover:text-bamboo transition-colors font-body"
+                  onClick={() => startCreate("folder")}
+                >
+                  <FolderPlus size={13} />
+                  新建文件夹
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

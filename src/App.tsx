@@ -42,7 +42,7 @@ function App() {
         <div className="w-64 shrink-0 border-r border-paper-deep/30 bg-paper/40 overflow-hidden">
           <FileTree />
         </div>
-        <div className="flex-1 overflow-hidden bg-transparent">
+        <div className="flex-1 overflow-hidden bg-cloud">
           <Editor />
         </div>
       </div>

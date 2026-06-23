@@ -1,0 +1,239 @@
+/* ===== Milkdown Paper Theme ===== */
+
+.milkdown-editor {
+  --crepe-color-background: var(--paper);
+  --crepe-color-surface: var(--paper-warm);
+  --crepe-color-surface-low: var(--paper);
+  --crepe-color-on-background: var(--ink);
+  --crepe-color-on-surface: var(--ink-soft);
+  --crepe-color-on-surface-variant: var(--ink-faint);
+  --crepe-color-outline: var(--paper-deep);
+  --crepe-color-primary: var(--bamboo);
+  --crepe-color-on-primary: var(--cloud);
+  --crepe-color-secondary: var(--bamboo-mist);
+  --crepe-color-on-secondary: var(--bamboo);
+  --crepe-color-shadow: var(--shadow);
+  --crepe-color-error: #dc2626;
+}
+
+/* Editor container - Milkdown renders inside this */
+.milkdown-editor .milkdown {
+  min-height: 100%;
+}
+
+/* ProseMirror editor area */
+.milkdown-editor .editor,
+.milkdown-editor .ProseMirror {
+  background: var(--cloud);
+  padding: 32px 40px;
+  max-width: 780px;
+  margin: 0 auto;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--ink-soft);
+  caret-color: var(--bamboo);
+}
+
+/* Placeholder */
+.milkdown-editor .ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--ink-ghost);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Selection */
+.milkdown-editor .ProseMirror ::selection {
+  background: var(--bamboo-glow);
+}
+:root[data-theme="dark"] .milkdown-editor .ProseMirror ::selection {
+  background: rgba(79, 170, 112, 0.2);
+}
+
+/* ===== Headings ===== */
+.milkdown-editor h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.6em;
+  color: var(--ink);
+  margin: 1.5em 0 0.6em;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+.milkdown-editor h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25em;
+  color: var(--ink);
+  margin: 1.5em 0 0.5em;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+}
+.milkdown-editor h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1em;
+  color: var(--ink);
+  margin: 1.2em 0 0.4em;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+.milkdown-editor h4, .milkdown-editor h5, .milkdown-editor h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1em;
+  color: var(--ink);
+  margin: 1em 0 0.3em;
+}
+
+/* ===== Paragraphs ===== */
+.milkdown-editor p {
+  color: var(--ink-soft);
+  margin: 0.5em 0;
+}
+
+/* ===== Bold & Italic ===== */
+.milkdown-editor strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+.milkdown-editor em {
+  font-style: italic;
+  color: var(--bamboo-light);
+}
+
+/* ===== Links ===== */
+.milkdown-editor a {
+  color: var(--bamboo);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.milkdown-editor a:hover {
+  color: var(--bamboo-light);
+}
+
+/* ===== Blockquote ===== */
+.milkdown-editor blockquote {
+  border-left: 2px solid var(--bamboo);
+  margin: 0.8em 0;
+  padding: 0.2em 0 0.2em 1em;
+  color: var(--ink-soft);
+  font-style: italic;
+  line-height: 1.9;
+  opacity: 0.85;
+}
+.milkdown-editor blockquote p {
+  margin: 0.3em 0;
+}
+
+/* ===== Lists ===== */
+.milkdown-editor ul, .milkdown-editor ol {
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+.milkdown-editor li {
+  line-height: 1.9;
+  color: var(--ink-soft);
+}
+.milkdown-editor ul > li::marker {
+  color: var(--bamboo);
+  opacity: 0.5;
+}
+.milkdown-editor ol > li::marker {
+  color: var(--bamboo);
+  opacity: 0.6;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+/* ===== Code ===== */
+.milkdown-editor code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--paper-warm);
+  color: var(--bamboo);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+.milkdown-editor pre {
+  background: var(--paper-warm);
+  border-radius: 8px;
+  padding: 1em 1.2em;
+  margin: 0.8em 0;
+  overflow-x: auto;
+}
+.milkdown-editor pre code {
+  background: none;
+  padding: 0;
+  color: var(--ink-soft);
+  font-size: 0.85em;
+  line-height: 1.7;
+}
+
+/* ===== Horizontal Rule ===== */
+.milkdown-editor hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--paper-deep), transparent);
+  margin: 2em 0;
+}
+
+/* ===== Tables ===== */
+.milkdown-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+  font-size: 0.93em;
+}
+.milkdown-editor th {
+  background: var(--paper-warm);
+  font-weight: 600;
+  color: var(--ink);
+  text-align: left;
+  padding: 0.5em 0.8em;
+  border: 1px solid var(--paper-deep);
+  font-size: 0.85em;
+}
+.milkdown-editor td {
+  padding: 0.4em 0.8em;
+  border: 1px solid var(--paper-deep);
+  color: var(--ink-soft);
+}
+
+/* ===== Images ===== */
+.milkdown-editor img {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 0.8em auto;
+  display: block;
+}
+
+/* ===== Task Lists ===== */
+.milkdown-editor input[type="checkbox"] {
+  accent-color: var(--bamboo);
+  margin-right: 0.4em;
+}
+
+/* ===== Cursor (block) ===== */
+.milkdown-editor .ProseMirror-gapcursor:after {
+  border-color: var(--bamboo);
+}
+
+/* ===== Strikethrough ===== */
+.milkdown-editor del {
+  color: var(--ink-ghost);
+  text-decoration: line-through;
+}
+
+/* ===== Scrollbar in editor ===== */
+.milkdown-editor .milkdown ::-webkit-scrollbar {
+  width: 4px;
+}
+.milkdown-editor .milkdown ::-webkit-scrollbar-thumb {
+  background: var(--ink-ghost);
+  border-radius: 2px;
+}

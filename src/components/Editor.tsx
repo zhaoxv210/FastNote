@@ -1,15 +1,21 @@
 import { useEffect, useRef, useCallback } from "react";
-import { EditorView, keymap, placeholder } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { languages } from "@codemirror/language-data";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { Editor as MilkEditor, rootCtx, defaultValueCtx } from "@milkdown/kit/core";
+import { commonmark } from "@milkdown/kit/preset/commonmark";
+import { gfm } from "@milkdown/kit/preset/gfm";
+import { history } from "@milkdown/kit/plugin/history";
+import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
+import { clipboard } from "@milkdown/kit/plugin/clipboard";
+import { indent } from "@milkdown/kit/plugin/indent";
+import { trailing } from "@milkdown/kit/plugin/trailing";
+import { cursor } from "@milkdown/kit/plugin/cursor";
+import { replaceAll, getMarkdown } from "@milkdown/kit/utils";
 import { useVaultStore } from "@/stores/vaultStore";
 import { FileText } from "lucide-react";
+import "./milkdown.css";
 
 export function Editor() {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<EditorView | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<MilkEditor | null>(null);
   const activeFile = useVaultStore((s) => s.activeFile);
   const activeContent = useVaultStore((s) => s.activeContent);
   const setActiveContent = useVaultStore((s) => s.setActiveContent);
@@ -18,86 +24,66 @@ export function Editor() {
 
   const debouncedSave = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => saveFile(), 600);
+    saveTimerRef.current = setTimeout(() => saveFile(), 800);
   }, [saveFile]);
 
-  // Init editor
+  // Create/destroy editor when active file changes
   useEffect(() => {
-    if (!editorRef.current) return;
-    if (viewRef.current) {
-      viewRef.current.destroy();
-      viewRef.current = null;
+    if (!containerRef.current) return;
+
+    // Destroy old editor
+    if (editorRef.current) {
+      editorRef.current.destroy();
+      editorRef.current = null;
     }
     if (!activeFile) return;
 
-    const updateListener = EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        setActiveContent(update.state.doc.toString());
-        debouncedSave();
-      }
-    });
+    // Clear container
+    containerRef.current.innerHTML = "";
 
-    const state = EditorState.create({
-      doc: activeContent,
-      extensions: [
-        markdown({ base: markdownLanguage, codeLanguages: languages }),
-        keymap.of([...defaultKeymap, indentWithTab]),
-        placeholder("开始写作..."),
-        updateListener,
-        EditorView.lineWrapping,
-        EditorView.theme({
-          "&": {
-            height: "100%",
-            backgroundColor: "transparent",
-          },
-          ".cm-scroller": {
-            fontFamily: "var(--font-mono)",
-            fontSize: "14px",
-            lineHeight: "1.9",
-          },
-          ".cm-content": {
-            caretColor: "var(--bamboo)",
-            padding: "24px 28px",
-          },
-          ".cm-cursor": {
-            borderLeftColor: "var(--bamboo)",
-          },
-          ".cm-activeLine": {
-            backgroundColor: "var(--bamboo-mist)",
-          },
-          ".cm-selectionBackground, .cm-focused .cm-selectionBackground": {
-            backgroundColor: "var(--bamboo-glow)",
-          },
-          ".cm-gutters": {
-            backgroundColor: "transparent",
-            borderRight: "none",
-            color: "var(--ink-ghost)",
-          },
-          ".cm-activeLineGutter": {
-            backgroundColor: "transparent",
-            color: "var(--ink-faint)",
-          },
-          ".cm-matchingBracket": {
-            color: "var(--bamboo)",
-            backgroundColor: "var(--bamboo-mist)",
-          },
-        }),
-      ],
-    });
+    let skipFirst = true;
 
-    viewRef.current = new EditorView({ state, parent: editorRef.current });
-    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+    MilkEditor.make()
+      .config((ctx) => {
+        ctx.set(rootCtx, containerRef.current!);
+        ctx.set(defaultValueCtx, activeContent);
+
+        // Listen for markdown changes to auto-save
+        const mgr = ctx.get(listenerCtx);
+        mgr.markdownUpdated((_ctx, markdown, _prev) => {
+          setActiveContent(markdown);
+          if (skipFirst) {
+            skipFirst = false;
+            return;
+          }
+          debouncedSave();
+        });
+      })
+      .use(commonmark)
+      .use(gfm)
+      .use(history)
+      .use(listener)
+      .use(clipboard)
+      .use(indent)
+      .use(trailing)
+      .use(cursor)
+      .create()
+      .then((editor) => {
+        editorRef.current = editor;
+      });
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
   }, [activeFile]);
 
-  // Sync external changes
+  // Sync content when externally changed (e.g. file opened from search)
   useEffect(() => {
-    if (viewRef.current && activeFile) {
-      const cur = viewRef.current.state.doc.toString();
-      if (cur !== activeContent) {
-        viewRef.current.dispatch({
-          changes: { from: 0, to: cur.length, insert: activeContent },
-        });
-      }
+    if (!editorRef.current || !activeFile) return;
+    const editor = editorRef.current;
+    const currentMd = editor.action(getMarkdown());
+    if (currentMd !== activeContent) {
+      editor.action(replaceAll(activeContent));
     }
   }, [activeContent, activeFile]);
 
@@ -113,7 +99,6 @@ export function Editor() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [saveFile]);
 
-  // Empty state
   if (!activeFile) {
     return (
       <div className="flex items-center justify-center h-full animate-fade-up">
@@ -121,35 +106,25 @@ export function Editor() {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-paper-warm/80 animate-float-gentle">
             <FileText size={32} className="text-ink-ghost/50" />
           </div>
-          <div>
-            <p className="text-[13px] text-ink-faint font-body">
-              选择一篇笔记开始写作
-            </p>
-            <p className="text-[11px] text-ink-ghost/60 font-body mt-1.5">
-              Ctrl+K 搜索 &middot; Ctrl+S 保存
-            </p>
-          </div>
+          <p className="text-[13px] text-ink-faint font-body">
+            选择一篇笔记开始写作
+          </p>
         </div>
       </div>
     );
   }
 
-  const fileName = activeFile.split("/").pop()?.replace(/\.md$/, "") ?? "";
-
   return (
     <div className="flex flex-col h-full">
-      {/* Editor header */}
       <div className="flex items-center h-9 px-5 border-b border-paper-deep/20 shrink-0">
         <div className="flex items-center gap-1.5">
           <FileText size={13} className="text-ink-ghost/60" />
           <span className="text-[11px] text-ink-faint font-body">
-            {fileName}
+            {activeFile.split("/").pop()?.replace(/\.md$/, "") ?? ""}
           </span>
         </div>
       </div>
-
-      {/* CodeMirror */}
-      <div ref={editorRef} className="flex-1 overflow-hidden" />
+      <div ref={containerRef} className="flex-1 overflow-y-auto milkdown-editor" />
     </div>
   );
 }
