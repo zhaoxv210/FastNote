@@ -194,6 +194,46 @@ fn delete_item(vault_path: String, path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Move a file or folder into a target directory
+#[tauri::command]
+fn move_item(vault_path: String, source: String, target_dir: String) -> Result<String, String> {
+    let src_path = Path::new(&vault_path).join(&source);
+    if !src_path.exists() {
+        return Err(format!("源路径不存在: {}", src_path.display()));
+    }
+
+    let dst_dir = Path::new(&vault_path).join(&target_dir);
+    if !dst_dir.exists() || !dst_dir.is_dir() {
+        return Err(format!("目标目录不存在: {}", dst_dir.display()));
+    }
+
+    // If source is already inside target_dir, reject to prevent no-op/circular
+    let src_canonical = src_path.canonicalize().map_err(|e| e.to_string())?;
+    let dst_canonical = dst_dir.canonicalize().map_err(|e| e.to_string())?;
+    if src_canonical.starts_with(&dst_canonical) {
+        return Err("不能将文件夹移动到自身或子目录中".to_string());
+    }
+
+    let file_name = src_path
+        .file_name()
+        .ok_or("无法获取文件名")?;
+    let dst_path = dst_dir.join(file_name);
+
+    if dst_path.exists() {
+        return Err(format!("目标已存在: {}", dst_path.display()));
+    }
+
+    fs::rename(&src_path, &dst_path).map_err(|e| format!("移动失败: {}", e))?;
+
+    let rel_path = dst_path
+        .strip_prefix(&vault_path)
+        .unwrap_or(&dst_path)
+        .to_string_lossy()
+        .to_string();
+
+    Ok(rel_path)
+}
+
 /// Rename a file or folder
 #[tauri::command]
 fn rename_item(vault_path: String, path: String, new_name: String) -> Result<String, String> {
@@ -324,6 +364,7 @@ pub fn run() {
             create_folder,
             delete_item,
             rename_item,
+            move_item,
             search,
         ])
         .run(tauri::generate_context!())

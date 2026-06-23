@@ -73,20 +73,23 @@ export function Toolbar() {
       onMouseDown={handleTitleBarMouseDown}
     >
       {/* Vault switcher */}
-      <div className="flex items-center min-w-0 flex-1">
+      <div className="flex items-center min-w-0 flex-1 gap-2">
+        <span className="text-[15px] font-serif font-medium text-ink-soft tracking-wide leading-none shrink-0">
+          速记
+        </span>
         <button
           onClick={handleSwitchVault}
-          className="text-[13px] font-body text-ink-soft truncate max-w-[180px] hover:text-bamboo transition-colors cursor-pointer"
+          className="text-[12px] font-body text-ink-faint truncate max-w-[140px] hover:text-bamboo transition-colors cursor-pointer shrink-0"
           title="点击切换笔记库"
         >
           {vaultName}
         </button>
         {fileName && (
           <>
-            <span className="text-[11px] text-ink-ghost font-body mx-1.5">
+            <span className="text-[11px] text-ink-ghost font-body shrink-0">
               /
             </span>
-            <span className="text-[12px] text-ink-faint font-body truncate max-w-[140px]">
+            <span className="text-[12px] text-ink-soft font-body truncate max-w-[100px] shrink-0">
               {fileName}
             </span>
           </>

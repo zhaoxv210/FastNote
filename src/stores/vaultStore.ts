@@ -25,6 +25,7 @@ interface VaultStore {
   createFolder: (parent: string, name: string) => Promise<void>;
   deleteItem: (path: string) => Promise<void>;
   renameItem: (path: string, newName: string) => Promise<void>;
+  moveItem: (source: string, targetDir: string) => Promise<void>;
   search: (keyword: string) => Promise<void>;
   setSearchOpen: (open: boolean) => void;
   clearSearch: () => void;
@@ -212,6 +213,33 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
       await loadTree();
     } catch (err) {
       console.error("Failed to rename:", err);
+      throw err;
+    }
+  },
+
+  moveItem: async (source: string, targetDir: string) => {
+    const { vaultPath, activeFile, loadTree } = get();
+    if (!vaultPath) return;
+
+    // Don't move if already in the target directory
+    const sourceDir = source.split("/").slice(0, -1).join("/");
+    if (sourceDir === targetDir) return;
+
+    try {
+      const newPath = await invoke<string>("move_item", {
+        vaultPath,
+        source,
+        targetDir,
+      });
+      // Update active file if it was moved
+      if (activeFile === source) {
+        set({ activeFile: newPath });
+      } else if (activeFile && activeFile.startsWith(source + "/")) {
+        set({ activeFile: activeFile.replace(source, newPath) });
+      }
+      await loadTree();
+    } catch (err) {
+      console.error("Failed to move item:", err);
       throw err;
     }
   },

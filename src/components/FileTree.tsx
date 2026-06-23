@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -13,6 +14,17 @@ import {
 } from "lucide-react";
 import type { TreeNode } from "@/types";
 import { useVaultStore } from "@/stores/vaultStore";
+
+/* ===== 全局拖拽状态 ===== */
+let dragState: {
+  sourcePath: string;
+  sourceEl: HTMLElement | null;
+  startX: number;
+  startY: number;
+  dragging: boolean;
+  currentTarget: string | null;
+  currentTargetEl: HTMLElement | null;
+} | null = null;
 
 /* ===== Context Menu ===== */
 function ContextMenu({
@@ -68,13 +80,15 @@ function ContextMenu({
   );
 }
 
-/* ===== Tree Item ===== */
-function TreeItem({
+/* ===== DraggableRow ===== */
+function DraggableRow({
   node,
   depth,
+  onDragTargetChange,
 }: {
   node: TreeNode;
   depth: number;
+  onDragTargetChange: (path: string | null, el: HTMLElement | null) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -82,6 +96,9 @@ function TreeItem({
   const [isCreating, setIsCreating] = useState<"file" | "folder" | null>(null);
   const [newName, setNewName] = useState("");
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const activeFile = useVaultStore((s) => s.activeFile);
   const openFile = useVaultStore((s) => s.openFile);
@@ -149,28 +166,129 @@ function TreeItem({
     },
   ];
 
+  const handleMouseDown = useCallback((e: ReactMouseEvent) => {
+    if ((e.target as HTMLElement).closest("button, input, textarea, [role='menuitem']")) return;
+    if (e.button !== 0) return;
+
+    const row = rowRef.current;
+    if (!row) return;
+
+    dragState = {
+      sourcePath: node.path,
+      sourceEl: row,
+      startX: e.clientX,
+      startY: e.clientY,
+      dragging: false,
+      currentTarget: null,
+      currentTargetEl: null,
+    };
+
+    const handleMouseMove = (me: globalThis.MouseEvent) => {
+      if (!dragState) return;
+      const dx = me.clientX - dragState.startX;
+      const dy = me.clientY - dragState.startY;
+      if (!dragState.dragging && Math.sqrt(dx * dx + dy * dy) > 6) {
+        dragState.dragging = true;
+        document.body.style.cursor = "grabbing";
+        document.body.classList.add("select-none");
+      }
+      if (!dragState.dragging) return;
+
+      // Hit-test: find the folder element under cursor
+      const el = document.elementFromPoint(me.clientX, me.clientY);
+      const folderRow = el?.closest<HTMLElement>("[data-tree-path]");
+      if (folderRow) {
+        const path = folderRow.dataset.treePath || "";
+        if (dragState.sourcePath === path || dragState.sourcePath.startsWith(path + "/")) {
+          // Invalid target (self or child)
+          if (dragState.currentTargetEl) {
+            dragState.currentTargetEl.style.outline = "";
+            dragState.currentTargetEl.style.backgroundColor = "";
+          }
+          dragState.currentTarget = null;
+          dragState.currentTargetEl = null;
+          onDragTargetChange(null, null);
+        } else {
+          if (dragState.currentTargetEl && dragState.currentTargetEl !== folderRow) {
+            dragState.currentTargetEl.style.outline = "";
+            dragState.currentTargetEl.style.backgroundColor = "";
+          }
+          dragState.currentTarget = path;
+          dragState.currentTargetEl = folderRow;
+          folderRow.style.outline = "2px solid rgba(99,163,133,0.5)";
+          folderRow.style.backgroundColor = "rgba(99,163,133,0.12)";
+          onDragTargetChange(path, folderRow);
+        }
+      } else {
+        if (dragState.currentTargetEl) {
+          dragState.currentTargetEl.style.outline = "";
+          dragState.currentTargetEl.style.backgroundColor = "";
+        }
+        dragState.currentTarget = null;
+        dragState.currentTargetEl = null;
+        onDragTargetChange(null, null);
+      }
+    };
+
+    const handleMouseUp = (me: globalThis.MouseEvent) => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.classList.remove("select-none");
+
+      const ds = dragState;
+      dragState = null;
+      onDragTargetChange(null, null);
+
+      if (ds?.dragging && ds.currentTarget) {
+        const store = useVaultStore.getState();
+        store.moveItem(ds.sourcePath, ds.currentTarget).catch(console.error);
+      }
+
+      // Cleanup styles
+      if (ds?.currentTargetEl) {
+        ds.currentTargetEl.style.outline = "";
+        ds.currentTargetEl.style.backgroundColor = "";
+      }
+      if (ds?.sourceEl) {
+        ds.sourceEl.style.opacity = "";
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, [node.path, onDragTargetChange]);
+
   return (
     <div>
       {/* Tree item row */}
       <div
+        ref={rowRef}
+        data-tree-path={node.type === "folder" ? node.path : undefined}
         className={`group flex items-center gap-1 h-7 mx-1.5 rounded-lg cursor-pointer select-none transition-all duration-200 ${
           isActive
             ? "bg-bamboo-mist/70"
-            : "hover:bg-paper-warm/70"
+            : isDragOver
+              ? "bg-bamboo-mist/40"
+              : "hover:bg-paper-warm/70"
         }`}
         style={{ paddingLeft: `${depth * 12 + 6}px` }}
         onClick={() => {
-          if (node.type === "folder") setExpanded(!expanded);
-          else openFile(node.path);
+          if (node.type === "folder") {
+            setExpanded(!expanded);
+          } else {
+            openFile(node.path);
+          }
         }}
         onContextMenu={(e) => {
           e.preventDefault();
           setMenuPos({ x: e.clientX, y: e.clientY });
         }}
+        onMouseDown={handleMouseDown}
       >
         {/* Expand icon */}
         {node.type === "folder" ? (
-          <span className={`shrink-0 text-ink-ghost/50 transition-transform duration-200 ${expanded ? "" : ""}`}>
+          <span className={`shrink-0 text-ink-ghost/50 transition-transform duration-200`}>
             {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
           </span>
         ) : (
@@ -248,7 +366,7 @@ function TreeItem({
       {node.type === "folder" && expanded && (
         <>
           {node.children?.map((child) => (
-            <TreeItem key={child.path} node={child} depth={depth + 1} />
+            <DraggableRow key={child.path} node={child} depth={depth + 1} onDragTargetChange={onDragTargetChange} />
           ))}
           {(!node.children || node.children.length === 0) && (
             <div
@@ -268,11 +386,17 @@ function TreeItem({
 export function FileTree() {
   const tree = useVaultStore((s) => s.tree);
   const vaultPath = useVaultStore((s) => s.vaultPath);
+  const moveItem = useVaultStore((s) => s.moveItem);
   const createFile = useVaultStore((s) => s.createFile);
   const createFolder = useVaultStore((s) => s.createFolder);
   const [isCreating, setIsCreating] = useState<"file" | "folder" | null>(null);
   const [newName, setNewName] = useState("");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+
+  // Track the current drag target from DraggableRow callbacks
+  const [isRootDragOver, setIsRootDragOver] = useState(false);
+  // We reuse DraggableRow's onDragTargetChange for the root drop zone
+  const rootDropRef = useRef<HTMLDivElement>(null);
 
   const handleCreateRoot = async () => {
     if (!newName.trim()) { setIsCreating(null); return; }
@@ -295,6 +419,21 @@ export function FileTree() {
     setAddMenuOpen(false);
   };
 
+  // Handle drop on root area via mouse-up detection in the overlay
+  const handleRootDrop = useCallback(() => {
+    const ds = dragState;
+    if (!ds || !ds.dragging || !ds.sourcePath) return;
+    const source = ds.sourcePath;
+    if (!source.includes("/")) return; // already at root
+    moveItem(source, "").catch(console.error);
+  }, [moveItem]);
+
+  // Subscribe to drag target changes from DraggableRow
+  const handleDragTargetChange = useCallback((path: string | null, _el: HTMLElement | null) => {
+    // If no folder target is hovered, we consider root as potential target
+    // (but the actual drop will be handled by handleRootDrop)
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -316,7 +455,7 @@ export function FileTree() {
           {addMenuOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setAddMenuOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 z-40 w-36 py-1 bg-cloud/95 backdrop-blur-sm border border-paper-deep/50 rounded-lg shadow-[0_4px_16px_var(--shadow-deep)] animate-scale-in">
+              <div className="absolute right-0 top-full mt-1 z-40 w-36 py-1 bg-cloud/95 backdrop-blur-sm border border-paper-deep/50 rounded-lg shadow-[0_4px_16px_var(--shadow-deep)]">
                 <button
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-ink-soft hover:bg-bamboo-mist/60 hover:text-bamboo transition-colors font-body"
                   onClick={() => startCreate("file")}
@@ -338,7 +477,12 @@ export function FileTree() {
       </div>
 
       {/* Tree area */}
-      <div className="flex-1 overflow-y-auto scrollbar-hidden py-1.5">
+      <div
+        ref={rootDropRef}
+        className={`flex-1 overflow-y-auto scrollbar-hidden py-1.5 relative ${
+          isRootDragOver ? "bg-bamboo-mist/20" : ""
+        }`}
+      >
         {vaultPath && tree.length === 0 && !isCreating && (
           <div className="px-4 py-16 text-center animate-fade-up">
             <p className="text-[13px] text-ink-ghost font-body">空空如也</p>
@@ -349,7 +493,7 @@ export function FileTree() {
         )}
 
         {tree.map((node) => (
-          <TreeItem key={node.path} node={node} depth={0} />
+          <DraggableRow key={node.path} node={node} depth={0} onDragTargetChange={handleDragTargetChange} />
         ))}
 
         {/* Root-level create */}
@@ -373,6 +517,19 @@ export function FileTree() {
               autoFocus
             />
           </div>
+        )}
+
+        {/* Drag overlay for root drop target */}
+        {dragState?.dragging && (
+          <div
+            className="absolute inset-0 z-20"
+            onMouseEnter={() => setIsRootDragOver(true)}
+            onMouseLeave={() => setIsRootDragOver(false)}
+            onMouseUp={() => {
+              setIsRootDragOver(false);
+              handleRootDrop();
+            }}
+          />
         )}
       </div>
 
