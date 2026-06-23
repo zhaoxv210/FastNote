@@ -28,3 +28,4 @@ src-tauri/target/
 
 # Misc
 .workbuddy/
+node_modules
