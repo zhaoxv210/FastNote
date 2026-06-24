@@ -101,10 +101,10 @@ export function Editor() {
 
   if (!activeFile) {
     return (
-      <div className="flex items-center justify-center h-full animate-fade-up">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-paper-warm/80 animate-float-gentle">
-            <FileText size={32} className="text-ink-ghost/50" />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-paper-warm border border-paper-deep">
+            <FileText size={22} className="text-ink-ghost/50" />
           </div>
           <p className="text-[13px] text-ink-faint font-body">
             选择一篇笔记开始写作
@@ -116,7 +116,7 @@ export function Editor() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center h-9 px-5 border-b border-paper-deep/20 shrink-0">
+      <div className="flex items-center h-9 px-5 border-b border-paper-deep shrink-0">
         <div className="flex items-center gap-1.5">
           <FileText size={13} className="text-ink-ghost/60" />
           <span className="text-[11px] text-ink-faint font-body">

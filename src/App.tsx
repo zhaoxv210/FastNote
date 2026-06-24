@@ -29,20 +29,20 @@ function App() {
 
   if (!vaultPath) {
     return (
-      <div className="h-full font-body text-ink noise-bg">
+      <div className="h-full font-body text-ink">
         <WelcomeScreen />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full font-body text-ink noise-bg select-none">
+    <div className="flex flex-col h-full font-body text-ink select-none">
       <Toolbar />
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-64 shrink-0 border-r border-paper-deep/30 bg-paper/40 overflow-hidden">
+        <div className="w-[220px] shrink-0 border-r border-paper-deep overflow-hidden">
           <FileTree />
         </div>
-        <div className="flex-1 overflow-hidden bg-cloud">
+        <div className="flex-1 overflow-hidden bg-paper">
           <Editor />
         </div>
       </div>

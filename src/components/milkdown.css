@@ -24,7 +24,7 @@
 /* ProseMirror editor area */
 .milkdown-editor .editor,
 .milkdown-editor .ProseMirror {
-  background: var(--cloud);
+  background: var(--paper);
   padding: 32px 40px;
   max-width: 780px;
   margin: 0 auto;
@@ -51,7 +51,7 @@
   background: var(--bamboo-glow);
 }
 :root[data-theme="dark"] .milkdown-editor .ProseMirror ::selection {
-  background: rgba(79, 170, 112, 0.2);
+  background: var(--bamboo-glow);
 }
 
 /* ===== Headings ===== */

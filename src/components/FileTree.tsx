@@ -221,7 +221,7 @@ function DraggableRow({
           dragState.currentTargetEl = null;
           dragState.isOverRoot = false;
           if (dragState.rootDropEl) {
-            dragState.rootDropEl.classList.remove("bg-bamboo-mist/20");
+            dragState.rootDropEl.classList.remove("bg-bamboo-mist/30");
           }
           onDragTargetChange(null, null);
         } else {
@@ -233,10 +233,10 @@ function DraggableRow({
           dragState.currentTargetEl = folderRow;
           dragState.isOverRoot = false;
           if (dragState.rootDropEl) {
-            dragState.rootDropEl.classList.remove("bg-bamboo-mist/20");
+            dragState.rootDropEl.classList.remove("bg-bamboo-mist/30");
           }
-          folderRow.style.outline = "2px solid rgba(99,163,133,0.5)";
-          folderRow.style.backgroundColor = "rgba(99,163,133,0.12)";
+          folderRow.style.outline = "2px solid color-mix(in srgb, var(--accent) 50%, transparent)";
+          folderRow.style.backgroundColor = "color-mix(in srgb, var(--accent) 10%, transparent)";
           onDragTargetChange(path, folderRow);
         }
       } else {
@@ -258,12 +258,12 @@ function DraggableRow({
         if (isInsideRoot && dragState.sourcePath.includes("/")) {
           dragState.isOverRoot = true;
           if (dragState.rootDropEl) {
-            dragState.rootDropEl.classList.add("bg-bamboo-mist/20");
+            dragState.rootDropEl.classList.add("bg-bamboo-mist/30");
           }
         } else {
           dragState.isOverRoot = false;
           if (dragState.rootDropEl) {
-            dragState.rootDropEl.classList.remove("bg-bamboo-mist/20");
+            dragState.rootDropEl.classList.remove("bg-bamboo-mist/30");
           }
         }
         onDragTargetChange(null, null);
@@ -297,7 +297,7 @@ function DraggableRow({
         ds.currentTargetEl.style.backgroundColor = "";
       }
       if (ds?.rootDropEl) {
-        ds.rootDropEl.classList.remove("bg-bamboo-mist/20");
+        ds.rootDropEl.classList.remove("bg-bamboo-mist/30");
       }
       if (ds?.sourceEl) {
         ds.sourceEl.style.opacity = "";
@@ -473,9 +473,9 @@ export function FileTree() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 h-10 border-b border-paper-deep/25 shrink-0">
-        <span className="text-[11px] font-medium text-ink-faint font-body uppercase tracking-wider">
-          笔记
+      <div className="flex items-center justify-between px-4 h-10 border-b border-paper-deep shrink-0">
+        <span className="text-[11px] font-semibold text-ink-faint font-body uppercase tracking-[0.5px]">
+          LIBRARY
         </span>
         <div className="relative">
           <button
