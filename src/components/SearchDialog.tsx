@@ -13,11 +13,11 @@ export function SearchDialog() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-ink/15 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-ink/10"
       onClick={clearSearch}
     >
       <div
-        className="w-[560px] max-h-[460px] bg-cloud/95 backdrop-blur-sm border border-paper-deep/50 rounded-xl shadow-[0_6px_32px_var(--shadow-deep)] flex flex-col overflow-hidden animate-scale-in"
+        className="w-[560px] max-h-[460px] bg-paper border border-paper-deep rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] flex flex-col overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

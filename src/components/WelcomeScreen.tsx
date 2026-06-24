@@ -26,14 +26,14 @@ export function WelcomeScreen() {
   return (
     <div className="flex items-center justify-center h-full animate-fade-up">
       <div className="text-center max-w-sm">
-        {/* Logo - paper aesthetic */}
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-paper-warm/80 border border-paper-deep/30 mb-8 animate-float-gentle">
-          <FolderOpen size={36} className="text-bamboo/60" />
+        {/* Logo */}
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-paper-warm border border-paper-deep mb-10">
+          <FolderOpen size={30} className="text-accent" />
         </div>
 
         {/* Brand */}
-        <h1 className="text-2xl font-serif font-medium text-ink tracking-wide mb-2">
-          速记
+        <h1 className="text-[28px] font-display font-semibold text-ink tracking-tight mb-2">
+          FastNote
         </h1>
         <p className="text-[13px] text-ink-faint font-body mb-10 leading-relaxed">
           极简本地 Markdown 笔记工具
@@ -42,9 +42,9 @@ export function WelcomeScreen() {
         {/* CTA button */}
         <button
           onClick={handleSelectFolder}
-          className="inline-flex items-center gap-2 px-8 py-2.5 rounded-xl bg-bamboo text-white text-[14px] font-medium font-body
-            hover:bg-bamboo-light transition-all duration-200
-            shadow-[0_2px_12px_rgba(45,90,61,0.15)] hover:shadow-[0_4px_20px_rgba(45,90,61,0.25)]
+          className="inline-flex items-center gap-2 px-8 py-2.5 rounded-lg bg-accent text-white text-[14px] font-medium font-body
+            hover:opacity-90 transition-all duration-150
+            shadow-[0_2px_8px_rgba(0,113,227,0.2)] hover:shadow-[0_4px_16px_rgba(0,113,227,0.3)]
             active:scale-[0.98]"
         >
           <FolderOpen size={17} />
@@ -56,7 +56,7 @@ export function WelcomeScreen() {
         )}
 
         {/* Feature pills */}
-        <div className="mt-16 grid grid-cols-3 gap-3">
+        <div className="mt-12 grid grid-cols-3 gap-2.5">
           {[
             {
               icon: FileText,
@@ -76,9 +76,9 @@ export function WelcomeScreen() {
           ].map(({ icon: Icon, label, desc }) => (
             <div
               key={label}
-              className="flex flex-col items-center gap-1.5 p-3.5 rounded-xl bg-paper-warm/50 border border-paper-deep/20 hover:border-bamboo/20 hover:bg-bamboo-mist/30 transition-all duration-200"
+              className="flex flex-col items-center gap-1 p-3 rounded-lg bg-paper-warm border border-paper-deep/30 hover:border-accent/30 transition-all duration-150"
             >
-              <Icon size={16} className="text-ink-ghost/60" />
+              <Icon size={15} className="text-ink-ghost/60" />
               <span className="text-[12px] font-medium text-ink-soft font-body">
                 {label}
               </span>
