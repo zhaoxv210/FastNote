@@ -24,6 +24,9 @@ let dragState: {
   dragging: boolean;
   currentTarget: string | null;
   currentTargetEl: HTMLElement | null;
+  isOverRoot: boolean;
+  rootDropEl: HTMLElement | null;
+  rootDropBounds: DOMRect | null;
 } | null = null;
 
 /* ===== Context Menu ===== */
@@ -181,6 +184,9 @@ function DraggableRow({
       dragging: false,
       currentTarget: null,
       currentTargetEl: null,
+      isOverRoot: false,
+      rootDropEl: null,
+      rootDropBounds: null,
     };
 
     const handleMouseMove = (me: globalThis.MouseEvent) => {
@@ -191,6 +197,12 @@ function DraggableRow({
         dragState.dragging = true;
         document.body.style.cursor = "grabbing";
         document.body.classList.add("select-none");
+        // 获取根区域元素的边界范围（只获取一次）
+        const rootEl = document.querySelector<HTMLElement>("[data-drop-root]:not(.pointer-events-none)");
+        if (rootEl) {
+          dragState.rootDropEl = rootEl;
+          dragState.rootDropBounds = rootEl.getBoundingClientRect();
+        }
       }
       if (!dragState.dragging) return;
 
@@ -207,6 +219,10 @@ function DraggableRow({
           }
           dragState.currentTarget = null;
           dragState.currentTargetEl = null;
+          dragState.isOverRoot = false;
+          if (dragState.rootDropEl) {
+            dragState.rootDropEl.classList.remove("bg-bamboo-mist/20");
+          }
           onDragTargetChange(null, null);
         } else {
           if (dragState.currentTargetEl && dragState.currentTargetEl !== folderRow) {
@@ -215,17 +231,41 @@ function DraggableRow({
           }
           dragState.currentTarget = path;
           dragState.currentTargetEl = folderRow;
+          dragState.isOverRoot = false;
+          if (dragState.rootDropEl) {
+            dragState.rootDropEl.classList.remove("bg-bamboo-mist/20");
+          }
           folderRow.style.outline = "2px solid rgba(99,163,133,0.5)";
           folderRow.style.backgroundColor = "rgba(99,163,133,0.12)";
           onDragTargetChange(path, folderRow);
         }
       } else {
+        // 检查鼠标是否在根区域边界范围内
+        const bounds = dragState.rootDropBounds;
+        const isInsideRoot = bounds &&
+          me.clientX >= bounds.left &&
+          me.clientX <= bounds.right &&
+          me.clientY >= bounds.top &&
+          me.clientY <= bounds.bottom;
+
         if (dragState.currentTargetEl) {
           dragState.currentTargetEl.style.outline = "";
           dragState.currentTargetEl.style.backgroundColor = "";
+          dragState.currentTargetEl = null;
+          dragState.currentTarget = null;
         }
-        dragState.currentTarget = null;
-        dragState.currentTargetEl = null;
+
+        if (isInsideRoot && dragState.sourcePath.includes("/")) {
+          dragState.isOverRoot = true;
+          if (dragState.rootDropEl) {
+            dragState.rootDropEl.classList.add("bg-bamboo-mist/20");
+          }
+        } else {
+          dragState.isOverRoot = false;
+          if (dragState.rootDropEl) {
+            dragState.rootDropEl.classList.remove("bg-bamboo-mist/20");
+          }
+        }
         onDragTargetChange(null, null);
       }
     };
@@ -240,15 +280,24 @@ function DraggableRow({
       dragState = null;
       onDragTargetChange(null, null);
 
-      if (ds?.dragging && ds.currentTarget) {
-        const store = useVaultStore.getState();
-        store.moveItem(ds.sourcePath, ds.currentTarget).catch(console.error);
+      if (ds?.dragging) {
+        if (ds.currentTarget) {
+          const store = useVaultStore.getState();
+          store.moveItem(ds.sourcePath, ds.currentTarget).catch(console.error);
+        } else if (ds.isOverRoot && ds.sourcePath.includes("/")) {
+          // Dropped on root area
+          const store = useVaultStore.getState();
+          store.moveItem(ds.sourcePath, "").catch(console.error);
+        }
       }
 
       // Cleanup styles
       if (ds?.currentTargetEl) {
         ds.currentTargetEl.style.outline = "";
         ds.currentTargetEl.style.backgroundColor = "";
+      }
+      if (ds?.rootDropEl) {
+        ds.rootDropEl.classList.remove("bg-bamboo-mist/20");
       }
       if (ds?.sourceEl) {
         ds.sourceEl.style.opacity = "";
@@ -386,7 +435,6 @@ function DraggableRow({
 export function FileTree() {
   const tree = useVaultStore((s) => s.tree);
   const vaultPath = useVaultStore((s) => s.vaultPath);
-  const moveItem = useVaultStore((s) => s.moveItem);
   const createFile = useVaultStore((s) => s.createFile);
   const createFolder = useVaultStore((s) => s.createFolder);
   const [isCreating, setIsCreating] = useState<"file" | "folder" | null>(null);
@@ -394,8 +442,6 @@ export function FileTree() {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   // Track the current drag target from DraggableRow callbacks
-  const [isRootDragOver, setIsRootDragOver] = useState(false);
-  // We reuse DraggableRow's onDragTargetChange for the root drop zone
   const rootDropRef = useRef<HTMLDivElement>(null);
 
   const handleCreateRoot = async () => {
@@ -419,19 +465,9 @@ export function FileTree() {
     setAddMenuOpen(false);
   };
 
-  // Handle drop on root area via mouse-up detection in the overlay
-  const handleRootDrop = useCallback(() => {
-    const ds = dragState;
-    if (!ds || !ds.dragging || !ds.sourcePath) return;
-    const source = ds.sourcePath;
-    if (!source.includes("/")) return; // already at root
-    moveItem(source, "").catch(console.error);
-  }, [moveItem]);
-
   // Subscribe to drag target changes from DraggableRow
-  const handleDragTargetChange = useCallback((path: string | null, _el: HTMLElement | null) => {
-    // If no folder target is hovered, we consider root as potential target
-    // (but the actual drop will be handled by handleRootDrop)
+  const handleDragTargetChange = useCallback((_path: string | null, _el: HTMLElement | null) => {
+    // Root drop is handled in DraggableRow's handleMouseMove (native event)
   }, []);
 
   return (
@@ -479,9 +515,8 @@ export function FileTree() {
       {/* Tree area */}
       <div
         ref={rootDropRef}
-        className={`flex-1 overflow-y-auto scrollbar-hidden py-1.5 relative ${
-          isRootDragOver ? "bg-bamboo-mist/20" : ""
-        }`}
+        data-drop-root=""
+        className="flex-1 overflow-y-auto scrollbar-hidden py-1.5 relative"
       >
         {vaultPath && tree.length === 0 && !isCreating && (
           <div className="px-4 py-16 text-center animate-fade-up">
@@ -519,17 +554,9 @@ export function FileTree() {
           </div>
         )}
 
-        {/* Drag overlay for root drop target */}
+        {/* Drag overlay for root drop visual highlight */}
         {dragState?.dragging && (
-          <div
-            className="absolute inset-0 z-20"
-            onMouseEnter={() => setIsRootDragOver(true)}
-            onMouseLeave={() => setIsRootDragOver(false)}
-            onMouseUp={() => {
-              setIsRootDragOver(false);
-              handleRootDrop();
-            }}
-          />
+          <div className="absolute inset-0 z-20 pointer-events-none" />
         )}
       </div>
 
