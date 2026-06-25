@@ -14,10 +14,13 @@ import {
 } from "lucide-react";
 import type { TreeNode } from "@/types";
 import { useVaultStore } from "@/stores/vaultStore";
+import { useI18n } from "@/i18n/context";
 
 /* ===== 全局拖拽状态 ===== */
 let dragState: {
   sourcePath: string;
+  sourceName: string;
+  sourceType: "file" | "folder";
   sourceEl: HTMLElement | null;
   startX: number;
   startY: number;
@@ -27,6 +30,7 @@ let dragState: {
   isOverRoot: boolean;
   rootDropEl: HTMLElement | null;
   rootDropBounds: DOMRect | null;
+  labelEl: HTMLElement | null;
 } | null = null;
 
 /* ===== Context Menu ===== */
@@ -93,7 +97,7 @@ function DraggableRow({
   depth: number;
   onDragTargetChange: (path: string | null, el: HTMLElement | null) => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(node.name.replace(/\.md$/, ""));
   const [isCreating, setIsCreating] = useState<"file" | "folder" | null>(null);
@@ -102,6 +106,7 @@ function DraggableRow({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const rowRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   const activeFile = useVaultStore((s) => s.activeFile);
   const openFile = useVaultStore((s) => s.openFile);
@@ -133,7 +138,7 @@ function DraggableRow({
   };
 
   const handleDelete = async () => {
-    if (confirm(`确定删除「${displayName}」吗？此操作不可撤销。`)) {
+    if (confirm(t("confirm_delete", { name: displayName }))) {
       try { await deleteItem(node.path); } catch (e) { console.error(e); }
     }
   };
@@ -142,19 +147,19 @@ function DraggableRow({
     ...(node.type === "folder"
       ? [
           {
-            label: "新建笔记",
+            label: t("new_note"),
             icon: <FilePlus size={13} />,
             onClick: () => setIsCreating("file"),
           },
           {
-            label: "新建文件夹",
+            label: t("new_folder"),
             icon: <FolderPlus size={13} />,
             onClick: () => setIsCreating("folder"),
           },
         ]
       : []),
     {
-      label: "重命名",
+      label: t("rename"),
       icon: <Pencil size={13} />,
       onClick: () => {
         setIsRenaming(true);
@@ -162,7 +167,7 @@ function DraggableRow({
       },
     },
     {
-      label: "删除",
+      label: t("delete"),
       icon: <Trash2 size={13} />,
       danger: true,
       onClick: handleDelete,
@@ -178,6 +183,8 @@ function DraggableRow({
 
     dragState = {
       sourcePath: node.path,
+      sourceName: displayName,
+      sourceType: node.type,
       sourceEl: row,
       startX: e.clientX,
       startY: e.clientY,
@@ -187,6 +194,7 @@ function DraggableRow({
       isOverRoot: false,
       rootDropEl: null,
       rootDropBounds: null,
+      labelEl: null,
     };
 
     const handleMouseMove = (me: globalThis.MouseEvent) => {
@@ -197,11 +205,48 @@ function DraggableRow({
         dragState.dragging = true;
         document.body.style.cursor = "grabbing";
         document.body.classList.add("select-none");
+
+        // 源元素变半透明
+        if (dragState.sourceEl) {
+          dragState.sourceEl.style.opacity = "0.4";
+        }
+
+        // 创建浮动标签
+        const label = document.createElement("div");
+        label.className = "fixed z-[100] flex items-center gap-1.5 px-2.5 py-1 bg-cloud/95 backdrop-blur-sm border border-paper-deep/40 rounded-lg shadow-lg pointer-events-none select-none whitespace-nowrap";
+        label.style.left = `${me.clientX + 12}px`;
+        label.style.top = `${me.clientY + 12}px`;
+
+        // 图标
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "flex items-center shrink-0";
+        iconSpan.innerHTML = dragState.sourceType === "folder"
+          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:inherit;opacity:0.6"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`
+          : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:inherit;opacity:0.5"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`;
+
+        // 名称
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "text-[12px] text-ink-soft font-body";
+        nameSpan.textContent = dragState.sourceName;
+
+        label.appendChild(iconSpan);
+        label.appendChild(nameSpan);
+        document.body.appendChild(label);
+        dragState.labelEl = label;
+
         // 获取根区域元素的边界范围（只获取一次）
         const rootEl = document.querySelector<HTMLElement>("[data-drop-root]:not(.pointer-events-none)");
         if (rootEl) {
           dragState.rootDropEl = rootEl;
           dragState.rootDropBounds = rootEl.getBoundingClientRect();
+          console.debug("[DnD] rootBounds cached", {
+            left: dragState.rootDropBounds.left,
+            top: dragState.rootDropBounds.top,
+            width: dragState.rootDropBounds.width,
+            height: dragState.rootDropBounds.height,
+          });
+        } else {
+          console.debug("[DnD] rootEl NOT FOUND");
         }
       }
       if (!dragState.dragging) return;
@@ -209,9 +254,10 @@ function DraggableRow({
       // Hit-test: find the folder element under cursor
       const el = document.elementFromPoint(me.clientX, me.clientY);
       const folderRow = el?.closest<HTMLElement>("[data-tree-path]");
+      console.debug("[DnD] mouse=(", me.clientX, me.clientY, "), el=", el?.tagName, el?.className?.slice(0, 40), ", folderRow=", folderRow?.dataset?.treePath || null);
       if (folderRow) {
         const path = folderRow.dataset.treePath || "";
-        if (dragState.sourcePath === path || dragState.sourcePath.startsWith(path + "/")) {
+        if (dragState.sourcePath === path || dragState.sourcePath.startsWith(path + "/") || dragState.sourcePath.startsWith(path + "\\")) {
           // Invalid target (self or child)
           if (dragState.currentTargetEl) {
             dragState.currentTargetEl.style.outline = "";
@@ -255,7 +301,9 @@ function DraggableRow({
           dragState.currentTarget = null;
         }
 
-        if (isInsideRoot && dragState.sourcePath.includes("/")) {
+        const sourceHasParent = dragState.sourcePath.includes("/") || dragState.sourcePath.includes("\\");
+        if (isInsideRoot && sourceHasParent) {
+          console.debug("[DnD] ROOT DROP ACTIVE — isInsideRoot=true, sourceHasParent=true, sourcePath=", dragState.sourcePath);
           dragState.isOverRoot = true;
           if (dragState.rootDropEl) {
             dragState.rootDropEl.classList.add("bg-bamboo-mist/30");
@@ -267,6 +315,12 @@ function DraggableRow({
           }
         }
         onDragTargetChange(null, null);
+      }
+
+      // 更新浮动标签位置
+      if (dragState.labelEl) {
+        dragState.labelEl.style.left = `${me.clientX + 12}px`;
+        dragState.labelEl.style.top = `${me.clientY + 12}px`;
       }
     };
 
@@ -281,10 +335,11 @@ function DraggableRow({
       onDragTargetChange(null, null);
 
       if (ds?.dragging) {
+        console.debug("[DnD] mouseup: currentTarget=", ds.currentTarget, "isOverRoot=", ds.isOverRoot, "sourcePath=", ds.sourcePath);
         if (ds.currentTarget) {
           const store = useVaultStore.getState();
           store.moveItem(ds.sourcePath, ds.currentTarget).catch(console.error);
-        } else if (ds.isOverRoot && ds.sourcePath.includes("/")) {
+        } else if (ds.isOverRoot && (ds.sourcePath.includes("/") || ds.sourcePath.includes("\\"))) {
           // Dropped on root area
           const store = useVaultStore.getState();
           store.moveItem(ds.sourcePath, "").catch(console.error);
@@ -301,6 +356,9 @@ function DraggableRow({
       }
       if (ds?.sourceEl) {
         ds.sourceEl.style.opacity = "";
+      }
+      if (ds?.labelEl) {
+        ds.labelEl.remove();
       }
     };
 
@@ -422,7 +480,7 @@ function DraggableRow({
               className="text-[11px] text-ink-ghost/50 py-1 font-body"
               style={{ paddingLeft: `${(depth + 1) * 12 + 26}px` }}
             >
-              空文件夹
+              {t("empty_folder")}
             </div>
           )}
         </>
@@ -440,6 +498,7 @@ export function FileTree() {
   const [isCreating, setIsCreating] = useState<"file" | "folder" | null>(null);
   const [newName, setNewName] = useState("");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const { t } = useI18n();
 
   // Track the current drag target from DraggableRow callbacks
   const rootDropRef = useRef<HTMLDivElement>(null);
@@ -475,7 +534,7 @@ export function FileTree() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-10 border-b border-paper-deep shrink-0">
         <span className="text-[11px] font-semibold text-ink-faint font-body uppercase tracking-[0.5px]">
-          LIBRARY
+          {t("library")}
         </span>
         <div className="relative">
           <button
@@ -497,14 +556,14 @@ export function FileTree() {
                   onClick={() => startCreate("file")}
                 >
                   <FileText size={13} />
-                  新建笔记
+                  {t("new_note")}
                 </button>
                 <button
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-ink-soft hover:bg-bamboo-mist/60 hover:text-bamboo transition-colors font-body"
                   onClick={() => startCreate("folder")}
                 >
                   <FolderPlus size={13} />
-                  新建文件夹
+                  {t("new_folder")}
                 </button>
               </div>
             </>
@@ -520,9 +579,9 @@ export function FileTree() {
       >
         {vaultPath && tree.length === 0 && !isCreating && (
           <div className="px-4 py-16 text-center animate-fade-up">
-            <p className="text-[13px] text-ink-ghost font-body">空空如也</p>
+            <p className="text-[13px] text-ink-ghost font-body">{t("empty_vault")}</p>
             <p className="text-[11px] text-ink-ghost/60 font-body mt-1">
-              右键或点击 + 创建第一篇笔记
+              {t("empty_vault_hint")}
             </p>
           </div>
         )}
@@ -541,7 +600,7 @@ export function FileTree() {
             )}
             <input
               className="flex-1 bg-paper-warm text-[13px] px-1.5 py-0 rounded outline-none ring-1 ring-bamboo/50 min-w-0 text-ink font-body placeholder:text-ink-ghost/60"
-              placeholder={isCreating === "file" ? "笔记名" : "文件夹名"}
+              placeholder={isCreating === "file" ? t("note_name") : t("folder_name")}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onBlur={handleCreateRoot}
@@ -563,7 +622,7 @@ export function FileTree() {
       {/* Footer */}
       <div className="px-4 py-2 border-t border-paper-deep/20 shrink-0 flex items-center justify-between">
         <span className="text-[10px] text-ink-ghost/60 font-mono tabular-nums">
-          {noteCount} 篇笔记
+          {t("note_count", { n: noteCount })}
         </span>
       </div>
     </div>

@@ -1,0 +1,66 @@
+export type Lang = "zh" | "en";
+
+export const translations: Record<Lang, Record<string, string>> = {
+  zh: {
+    "library": "目录",
+    "new_note": "新建笔记",
+    "new_folder": "新建文件夹",
+    "note_name": "笔记名",
+    "folder_name": "文件夹名",
+    "search_placeholder": "搜索...",
+    "search_results": "搜索结果",
+    "no_results": "没有找到匹配的结果",
+    "enter_open": "Enter 打开",
+    "esc_close": "Esc 关闭",
+    "more_matches": "还有 {n} 处匹配...",
+    "files": "文件",
+    "matches": "匹配",
+    "rename": "重命名",
+    "delete": "删除",
+    "confirm_delete": "确定删除「{name}」吗？此操作不可撤销。",
+    "empty_folder": "空文件夹",
+    "empty_vault": "空空如也",
+    "empty_vault_hint": "右键或点击 + 创建第一篇笔记",
+    "note_count": "{n} 篇笔记",
+    "no_notes": "没有笔记",
+    "switch_vault": "切换笔记库",
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "close": "关闭",
+    "language": "语言",
+  },
+  en: {
+    "library": "LIBRARY",
+    "new_note": "New Note",
+    "new_folder": "New Folder",
+    "note_name": "Note name",
+    "folder_name": "Folder name",
+    "search_placeholder": "Search...",
+    "search_results": "Search Results",
+    "no_results": "No matching results",
+    "enter_open": "Enter to open",
+    "esc_close": "Esc to close",
+    "more_matches": "And {n} more...",
+    "files": "files",
+    "matches": "matches",
+    "rename": "Rename",
+    "delete": "Delete",
+    "confirm_delete": "Delete \"{name}\"? This cannot be undone.",
+    "empty_folder": "Empty folder",
+    "empty_vault": "No notes yet",
+    "empty_vault_hint": "Right-click or press + to create your first note",
+    "note_count": "{n} notes",
+    "no_notes": "No notes",
+    "switch_vault": "Switch vault",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "close": "Close",
+    "language": "Language",
+  },
+};
+
+export function t(lang: Lang, key: string, params?: Record<string, string | number>): string {
+  const val = translations[lang]?.[key] ?? translations.zh[key] ?? key;
+  if (!params) return val;
+  return val.replace(/\{(\w+)\}/g, (_, k) => String(params[k] ?? `{${k}}`));
+}

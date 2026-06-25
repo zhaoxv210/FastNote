@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { I18nProvider } from "@/i18n/context";
 import { useVaultStore } from "@/stores/vaultStore";
 import { FileTree } from "@/components/FileTree";
 import { Editor } from "@/components/Editor";
@@ -6,7 +7,7 @@ import { SearchDialog } from "@/components/SearchDialog";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { Toolbar } from "@/components/Toolbar";
 
-function App() {
+function AppInner() {
   const vaultPath = useVaultStore((s) => s.vaultPath);
   const setVaultPath = useVaultStore((s) => s.setVaultPath);
   const loadTree = useVaultStore((s) => s.loadTree);
@@ -48,6 +49,14 @@ function App() {
       </div>
       <SearchDialog />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <I18nProvider>
+      <AppInner />
+    </I18nProvider>
   );
 }
 

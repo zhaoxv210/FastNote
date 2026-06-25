@@ -207,11 +207,18 @@ fn move_item(vault_path: String, source: String, target_dir: String) -> Result<S
         return Err(format!("目标目录不存在: {}", dst_dir.display()));
     }
 
-    // If source is already inside target_dir, reject to prevent no-op/circular
+    // Check: destination is inside source (cannot move folder into itself)
     let src_canonical = src_path.canonicalize().map_err(|e| e.to_string())?;
     let dst_canonical = dst_dir.canonicalize().map_err(|e| e.to_string())?;
-    if src_canonical.starts_with(&dst_canonical) {
+    if dst_canonical.starts_with(&src_canonical) {
         return Err("不能将文件夹移动到自身或子目录中".to_string());
+    }
+    // Check: source is already directly in target (no-op)
+    if let Some(parent) = src_path.parent() {
+        if parent == dst_dir {
+            let p = dst_dir.display();
+            return Err(format!("已在目标目录中: {}", p));
+        }
     }
 
     let file_name = src_path

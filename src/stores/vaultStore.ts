@@ -222,7 +222,8 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
     if (!vaultPath) return;
 
     // Don't move if already in the target directory
-    const sourceDir = source.split("/").slice(0, -1).join("/");
+    const sep = source.includes("/") ? "/" : "\\";
+    const sourceDir = source.split(sep).slice(0, -1).join(sep);
     if (sourceDir === targetDir) return;
 
     try {
@@ -234,7 +235,7 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
       // Update active file if it was moved
       if (activeFile === source) {
         set({ activeFile: newPath });
-      } else if (activeFile && activeFile.startsWith(source + "/")) {
+      } else if (activeFile && (activeFile.startsWith(source + "/") || activeFile.startsWith(source + "\\"))) {
         set({ activeFile: activeFile.replace(source, newPath) });
       }
       await loadTree();
@@ -246,8 +247,9 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
 
   search: async (keyword: string) => {
     const { vaultPath } = get();
-    if (!vaultPath || !keyword.trim()) {
-      set({ searchResults: [], isSearchOpen: false });
+    if (!vaultPath) return;
+    if (!keyword.trim()) {
+      set({ searchResults: [] });
       return;
     }
 
