@@ -1,7 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use walkdir::WalkDir;/// Represents a node in the file tree
+use walkdir::WalkDir;
+
+use notify::{Event as NotifyEvent, EventKind, RecursiveMode, Watcher};
+use std::sync::Mutex;
+use tauri::{AppHandle, Emitter, Manager};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum TreeNode {
@@ -30,9 +34,20 @@ pub struct SearchMatch {
     pub line_content: String,
 }
 
-/// Store the vault path in Tauri managed state
-#[allow(dead_code)]
-struct VaultPath(std::sync::Mutex<Option<String>>);
+/// Store the vault state (path + watcher)
+struct VaultState {
+    path: Mutex<Option<String>>,
+    watcher: Mutex<Option<notify::RecommendedWatcher>>,
+}
+
+impl VaultState {
+    fn new() -> Self {
+        Self {
+            path: Mutex::new(None),
+            watcher: Mutex::new(None),
+        }
+    }
+}
 
 /// Build a tree structure from a directory path
 fn build_tree(dir_path: &Path, base_path: &Path) -> Vec<TreeNode> {
@@ -355,12 +370,67 @@ fn search(vault_path: String, keyword: String) -> Result<Vec<SearchResult>, Stri
     Ok(results)
 }
 
+/// Start watching the vault directory for external file changes
+#[tauri::command]
+fn start_watcher(app: AppHandle, vault_path: String) -> Result<(), String> {
+    let state = app.state::<VaultState>();
+
+    // Stop previous watcher if any
+    *state.watcher.lock().unwrap() = None;
+
+    let app_clone = app.clone();
+    let vault_clone = vault_path.clone();
+
+    let mut watcher = notify::recommended_watcher(
+        move |res: Result<NotifyEvent, notify::Error>| {
+            if let Ok(event) = res {
+                match event.kind {
+                    EventKind::Create(_)
+                    | EventKind::Remove(_)
+                    | EventKind::Modify(_) => {
+                        let relevant = event.paths.iter().any(|p| {
+                            let is_md = p.extension().map(|e| e == "md").unwrap_or(false);
+                            let is_dir = p.is_dir();
+                            let hidden = p
+                                .file_name()
+                                .map(|n| n.to_string_lossy().starts_with('.'))
+                                .unwrap_or(false);
+                            (is_md || is_dir) && !hidden
+                        });
+                        if relevant {
+                            let _ = app_clone.emit("fs-change", &vault_clone);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        },
+    )
+    .map_err(|e| format!("Failed to create watcher: {}", e))?;
+
+    watcher
+        .watch(Path::new(&vault_path), RecursiveMode::Recursive)
+        .map_err(|e| format!("Failed to watch directory: {}", e))?;
+
+    *state.watcher.lock().unwrap() = Some(watcher);
+    *state.path.lock().unwrap() = Some(vault_path);
+
+    Ok(())
+}
+
+/// Stop file watching
+#[tauri::command]
+fn stop_watcher(app: AppHandle) {
+    let state = app.state::<VaultState>();
+    *state.watcher.lock().unwrap() = None;
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .manage(VaultPath(std::sync::Mutex::new(None)))
+        .manage(VaultState::new())
         .invoke_handler(tauri::generate_handler![
             get_tree,
             open_file,
@@ -371,6 +441,8 @@ pub fn run() {
             rename_item,
             move_item,
             search,
+            start_watcher,
+            stop_watcher,
         ])
         .run(tauri::generate_context!())
         .expect("error while running FastNote");

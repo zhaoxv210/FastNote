@@ -1,4 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import { I18nProvider } from "@/i18n/context";
 import { useVaultStore } from "@/stores/vaultStore";
 import { FileTree } from "@/components/FileTree";
@@ -11,6 +13,7 @@ function AppInner() {
   const vaultPath = useVaultStore((s) => s.vaultPath);
   const setVaultPath = useVaultStore((s) => s.setVaultPath);
   const loadTree = useVaultStore((s) => s.loadTree);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Init theme
   useEffect(() => {
@@ -25,8 +28,25 @@ function AppInner() {
   }, []);
 
   useEffect(() => {
-    if (vaultPath) loadTree();
+    if (vaultPath) {
+      loadTree();
+      invoke("start_watcher", { vaultPath }).catch(console.error);
+    }
   }, [vaultPath]);
+
+  // Listen for external file changes
+  useEffect(() => {
+    const unlisten = listen("fs-change", () => {
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        loadTree();
+      }, 500);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+      clearTimeout(timerRef.current);
+    };
+  }, [loadTree]);
 
   if (!vaultPath) {
     return (
