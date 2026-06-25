@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+    <defs>
+        <linearGradient id="blueLightning" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0066ff" />
+            <stop offset="100%" stop-color="#00d2ff" />
+        </linearGradient>
+
+        <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.05"/>
+        </filter>
+    </defs>
+
+    <rect x="32" y="32" width="448" height="448" rx="110" fill="#ffffff" stroke="#f1f5f9" stroke-width="2" filter="url(#subtleShadow)" />
+
+    <path d="M285,70 L165,245 L255,245 L205,442 L347,230 L257,230 Z" 
+          fill="url(#blueLightning)" 
+          stroke-linejoin="round" />
+</svg>

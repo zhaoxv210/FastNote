@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use walkdir::WalkDir;
-
-/// Represents a node in the file tree
+use walkdir::WalkDir;/// Represents a node in the file tree
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum TreeNode {
